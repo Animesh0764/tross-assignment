@@ -173,8 +173,12 @@ git clone <repo> && cd tross-linkedin-api
 python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env                              # then fill in the two cookies
-uvicorn main:app --reload
+uvicorn main:app --reload --env-file .env
 ```
+
+`--env-file` is what loads the cookies (uvicorn reads it via python-dotenv, bundled with
+`uvicorn[standard]`). On a host like Render or Fly you set real environment variables
+instead and drop the flag.
 
 ```bash
 curl "http://localhost:8000/profile?url=https://www.linkedin.com/in/williamhgates/"
