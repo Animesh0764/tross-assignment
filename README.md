@@ -60,6 +60,17 @@ and returns basics with `"partial": true`. See *Known limitations*.
 
 ---
 
+## Frontend
+
+`GET /` serves a one-file demo page (`static/index.html`, no build step, no framework):
+paste a profile URL and a session's `li_at` / `JSESSIONID`, get the JSON back rendered in
+the page. It exists so the hosted link is self-contained — no `curl` needed to try it.
+
+Cookies typed into the page are sent as `X-LI-AT` / `X-JSESSIONID` request headers and
+used for that one request only; the server holds nothing in a database. Deliberately not
+using the server's own configured account for public traffic — see `/profile` below and
+*Known limitations*.
+
 ## API
 
 ### `GET /profile`
@@ -69,6 +80,7 @@ and returns basics with `"partial": true`. See *Known limitations*.
 | `url` | query | yes | Profile URL (`https://www.linkedin.com/in/<vanity>/`) or a bare vanity |
 | `refresh` | query | no | `true` bypasses the cache |
 | `X-API-Key` | header | only if `API_KEY` is set on the server | Shared secret |
+| `X-LI-AT`, `X-JSESSIONID` | header | no | Caller-supplied session, overrides the server's `LI_AT`/`JSESSIONID` for this request. Responses using caller-supplied cookies skip the shared cache. |
 
 **200**
 
@@ -230,6 +242,10 @@ workers, so N workers means up to N times the LinkedIn traffic.
 
 ## Known limitations
 
+- **This uses a private, undocumented LinkedIn API.** LinkedIn's User Agreement §8.2
+  prohibits scraping and unauthorized automated access; using it, even with your own
+  cookies, risks that account being rate-limited or restricted. Use a throwaway account,
+  not your primary one — the demo page says so, but it bears repeating here.
 - **The account is the rate limit.** Voyager is metered per member. A few hundred profile
   views an hour is fine; sustained bulk traffic gets the account soft-blocked (HTTP 429/999
   → the API returns 429). The cache exists to make repeat lookups free; anything

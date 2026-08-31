@@ -252,13 +252,22 @@ class Voyager:
             r = self.client.get(path, params=params, headers=headers)
         except httpx.HTTPError as e:
             raise LinkedInError(502, f"Upstream request failed: {e}")
+        if 300 <= r.status_code < 400:
+            # Voyager never redirects a good session: it bounces to login or to a
+            # security challenge. Distinguish them — the fixes are different.
+            loc = r.headers.get("location", "")
+            if "checkpoint" in loc or "challenge" in loc:
+                raise LinkedInError(403, "LinkedIn served a security challenge — open "
+                                         "linkedin.com in a browser, clear it, then re-copy cookies")
+            raise LinkedInError(401, "Redirected to login — the session cookie is dead; "
+                                     "re-copy LI_AT and JSESSIONID")
         if r.status_code in (401, 403):
             raise LinkedInError(401, "LinkedIn rejected the session cookie — refresh LI_AT/JSESSIONID")
         if r.status_code == 404:
             raise LinkedInError(404, "Profile not found or not visible to this account")
         if r.status_code in (429, 999):
             raise LinkedInError(429, "Throttled by LinkedIn — back off and retry later")
-        if r.status_code >= 300:
+        if r.status_code >= 400:
             raise LinkedInError(502, f"Unexpected upstream status {r.status_code}")
         try:
             return r.json()
@@ -290,9 +299,10 @@ class Voyager:
         vanity = vanity_from_url(url_or_vanity)
         try:
             pv = self.profile_view(vanity)
-        except LinkedInError as e:
-            if e.status not in (404, 502):
-                raise
+        except LinkedInError:
+            # profileView is retired on some sessions (302 to a login page). Let the dash
+            # route decide: if the session is simply dead, dash raises that error itself
+            # rather than us masking it as partial data.
             return parse_dash(self.dash_profile(vanity), vanity)
         # best-effort extras: never fail the whole request over them
         skills = contact = None

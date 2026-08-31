@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinkedIn Profile API</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.5 -apple-system, Segoe UI, Roboto, sans-serif; max-width: 720px;
+         margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 1.3rem; }
+  label { display: block; margin-top: 14px; font-weight: 600; font-size: 0.85rem; }
+  input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box;
+          font: inherit; }
+  button { margin-top: 18px; padding: 9px 18px; font: inherit; cursor: pointer; }
+  .hint { color: #888; font-size: 0.8rem; margin-top: 2px; }
+  .warn { background: #fff3cd; border: 1px solid #e0c46b; color: #6b5300;
+          padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; margin: 16px 0; }
+  pre { background: #1116; padding: 12px; border-radius: 6px; overflow: auto;
+        white-space: pre-wrap; word-break: break-word; }
+  #status { margin-top: 12px; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>LinkedIn Profile API</h1>
+<p>Paste a LinkedIn profile URL and a LinkedIn session's cookies. The request runs
+server-side against LinkedIn's Voyager API and returns structured JSON — nothing is
+stored.</p>
+
+<div class="warn">
+  Use a throwaway/secondary LinkedIn account's cookies, not your primary one.
+  This calls a private, undocumented LinkedIn API, which is against LinkedIn's
+  Terms of Service and can get the account rate-limited or restricted.
+</div>
+
+<label>Profile URL</label>
+<input id="url" placeholder="https://www.linkedin.com/in/williamhgates/">
+
+<label>li_at cookie</label>
+<input id="liAt" placeholder="AQE...">
+<div class="hint">DevTools → Application → Cookies → linkedin.com → li_at</div>
+
+<label>JSESSIONID cookie</label>
+<input id="jsession" placeholder="ajax:1234567890123456789">
+<div class="hint">Same place, JSESSIONID — paste without the surrounding quotes</div>
+
+<button id="go">Fetch profile</button>
+<div id="status"></div>
+<pre id="out" hidden></pre>
+
+<script>
+const $ = id => document.getElementById(id);
+
+$('go').onclick = async () => {
+  const url = $('url').value.trim();
+  const liAt = $('liAt').value.trim();
+  const jsession = $('jsession').value.trim();
+  const status = $('status'), out = $('out');
+
+  if (!url || !liAt || !jsession) {
+    status.textContent = 'Fill in all three fields.';
+    return;
+  }
+
+  $('go').disabled = true;
+  status.textContent = 'Fetching…';
+  out.hidden = true;
+
+  try {
+    const res = await fetch('/profile?url=' + encodeURIComponent(url), {
+      headers: { 'X-LI-AT': liAt, 'X-JSESSIONID': jsession },
+    });
+    const body = await res.json();
+    status.textContent = res.ok ? 'Done.' : `Error ${res.status}`;
+    out.textContent = JSON.stringify(body, null, 2);
+    out.hidden = false;
+  } catch (e) {
+    status.textContent = 'Request failed: ' + e.message;
+  } finally {
+    $('go').disabled = false;
+  }
+};
+</script>
+</body>
+</html>
